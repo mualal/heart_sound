@@ -5,8 +5,9 @@ import numpy as np
 from scipy.io.wavfile import read
 from db_struct import Database
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from playsound import playsound
+from matplotlib import ticker
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+import pygame as pg
 
 db = Database('heart_rhythms.db')
 
@@ -46,10 +47,12 @@ def select_item(event):
         figure1.clear()
         ax1 = figure1.add_subplot()
         ax1.plot(time[0:len(data)], data, linewidth=0.5)
+        ax1.yaxis.set_major_formatter(formatter)
+        ax1.grid(linewidth=0.3)
         ax1.set_xlabel('Время (с)')
         ax1.set_ylabel('Амплитуда')
         ax1.set_title(selected_item)
-        bar1.draw()
+        canvas.draw()
         pulse_label.config(text='Пульс')
 
     except IndexError:
@@ -73,8 +76,16 @@ def clear_text():
 
 
 def listen_rhythm(event):
-    print(selected_index)
-    playsound(db.fetch()[selected_index][2])
+    if not pg.mixer.get_init():
+        pg.mixer.init()
+    if pg.mixer.music.get_busy():
+        pg.mixer.music.stop()
+        listen_btn.config(text='Слушать')
+    else:
+        print(selected_index)
+        pg.mixer.music.load(db.fetch()[selected_index][2])
+        pg.mixer.music.play()
+        listen_btn.config(text='Не слушать')
 
 
 def open_new_window(event):
@@ -103,28 +114,36 @@ root.title('Звук Сердца')
 root.resizable(width=False, height=False)
 root.geometry('930x600')
 
+formatter = ticker.ScalarFormatter(useMathText=True)
+formatter.set_scientific(True)
+formatter.set_powerlimits((-1, 1))
+
 # Место для графика
 figure1 = plt.Figure(figsize=(6, 5), dpi=100)
 ax = figure1.add_subplot()
-bar1 = FigureCanvasTkAgg(figure1, root)
-rhythm_graph = bar1.get_tk_widget()
+canvas = FigureCanvasTkAgg(figure1, root)
+rhythm_graph = canvas.get_tk_widget()
 rhythm_graph.place(x=5, y=0)
-bar1.draw()
+canvas.draw()
+
+toolbar = NavigationToolbar2Tk(canvas, root)
+toolbar.place(x=5, y=0)
+toolbar.update()
 
 figure1.canvas.draw_idle()
 
 rhythm_text = StringVar()
 instr_label = Label(root, text='Добавить ритм', font=('bold', 14), pady=20)
-instr_label.place(x=600, y=250)
+instr_label.place(x=630, y=250)
 
 rhythm_label = Label(root, text='Имя', font=('bold', 14), pady=20)
-rhythm_label.place(x=600, y=300)
+rhythm_label.place(x=630, y=300)
 rhythm_entry = Entry(root, textvariable=rhythm_text)
-rhythm_entry.place(x=700, y=315)
+rhythm_entry.place(x=700, y=320)
 
 # Список ранее загруженных ритмов
 rhythms_list = Listbox(root, height=8, width=25, border=0)
-rhythms_list.place(x=620, y=20)
+rhythms_list.place(x=630, y=20)
 
 # Полоса прокрутки
 scrollbar = Scrollbar(root)
@@ -142,24 +161,24 @@ rhythms_list.bind('<<ListboxSelect>>', select_item)
 # Кнопки
 add_btn = Button(root, text='Выбрать файл', width=12)
 add_btn.bind('<Button-1>', choose_file)
-add_btn.place(x=700, y=350)
+add_btn.place(x=700, y=355)
 
 add_btn = Button(root, text='Удалить из списка', width=16, command=remove_item)
 add_btn.place(x=700, y=400)
 
 pulse_label = Label(root, text='Пульс', font=('bold', 14), pady=20)
-pulse_label.place(x=20, y=500)
+pulse_label.place(x=20, y=530)
 
 arythmy_label = Label(root, text='Аритмия', font=('bold', 14), pady=20)
-arythmy_label.place(x=120, y=500)
+arythmy_label.place(x=180, y=530)
 
 listen_btn = Button(root, text='Слушать', width=12)
 listen_btn.bind('<Button-1>', listen_rhythm)
-listen_btn.place(x=220, y=550)
+listen_btn.place(x=400, y=550)
 
-listen_btn = Button(root, text='Подробнее', width=12)
-listen_btn.bind('<Button-1>', open_new_window)
-listen_btn.place(x=370, y=550)
+info_btn = Button(root, text='Подробнее', width=12)
+info_btn.bind('<Button-1>', open_new_window)
+info_btn.place(x=520, y=550)
 
 populate_list()
 
