@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 from matplotlib import ticker
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import pygame as pg
+from stingray import lightcurve
+from stingray.bispectrum import Bispectrum
 
 db = Database('heart_rhythms.db')
 
@@ -88,25 +90,49 @@ def listen_rhythm(event):
         listen_btn.config(text='Не слушать')
 
 
-def open_new_window(event):
-    new_window = Toplevel(root)
-    new_window.title('Подробный анализ')
-    new_window.geometry('930x600')
+def fft_window(event):
+
     sample_rate, data = read(db.fetch()[selected_index][2])
     fft_spectrum = np.fft.rfft(data)
     freq = np.fft.rfftfreq(len(data), d=1./sample_rate)
     fft_spectrum_abs = np.abs(fft_spectrum)
 
-    figure2 = plt.Figure(figsize=(6, 5), dpi=100)
-    ax2 = figure2.add_subplot()
-    ax2.plot(freq, fft_spectrum_abs, linewidth=0.5)
-    ax2.set_xlabel('Частота (Гц)')
-    ax2.set_ylabel('Мощность')
-    ax2.set_title(selected_item + ' (преобразование Фурье)')
-    bar2 = FigureCanvasTkAgg(figure2, new_window)
-    frequency_domain_graph = bar2.get_tk_widget()
-    frequency_domain_graph.place(x=5, y=0)
-    bar2.draw()
+    plt.plot(freq, fft_spectrum_abs, linewidth=0.5)
+    ax3 = plt.gca()
+    ax3.yaxis.set_major_formatter(formatter)
+    plt.grid(linewidth=0.3)
+    plt.xlabel('Частота (Гц)')
+    plt.ylabel('Мощность')
+    plt.title(selected_item + ' (преобразование Фурье)')
+    plt.show()
+    #toolbar2 = NavigationToolbar2Tk(canvas2, new_window)
+    #toolbar2.place(x=5, y=0)
+    #toolbar2.update()
+
+
+def bsp_window(event):
+    sample_rate, data = read(db.fetch()[selected_index][2])
+    duration = len(data) / sample_rate
+    data = data[0:len(data):int(sample_rate / 2000)]
+    sample_rate = int(sample_rate / int(sample_rate / 2000))
+    time = np.arange(0, duration, 1 / sample_rate)
+    data = data / max(data)
+    times = time[0:int(3 / duration * len(data))]
+    counts = data[0:int(3 / duration * len(data))]
+    times = times[0:len(times):2]
+    counts = counts[0:len(counts):2]
+    lc = lightcurve.Lightcurve(times, counts)
+
+    bs = Bispectrum(lc, scale='unbiased')
+
+    p = bs.plot_mag()
+    p.title('Величина биспектра')
+    p.xlabel('Частота f1, Гц')
+    p.ylabel('Частота f2, Гц')
+    ax3 = p.gca()
+    ax3.set_ylim([-300, 300])
+    ax3.set_xlim([-300, 300])
+    p.show()
 
 
 root = Tk()
@@ -176,9 +202,13 @@ listen_btn = Button(root, text='Слушать', width=12)
 listen_btn.bind('<Button-1>', listen_rhythm)
 listen_btn.place(x=400, y=550)
 
-info_btn = Button(root, text='Подробнее', width=12)
-info_btn.bind('<Button-1>', open_new_window)
-info_btn.place(x=520, y=550)
+fft_btn = Button(root, text='Фурье', width=12)
+fft_btn.bind('<Button-1>', fft_window)
+fft_btn.place(x=520, y=550)
+
+bsp_btn = Button(root, text='Биспектр', width=12)
+bsp_btn.bind('<Button-1>', bsp_window)
+bsp_btn.place(x=660, y=550)
 
 populate_list()
 
