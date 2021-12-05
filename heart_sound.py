@@ -10,8 +10,33 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import pygame as pg
 from stingray import lightcurve
 from stingray.bispectrum import Bispectrum
+from detecta import detect_peaks
 
 db = Database('heart_rhythms.db')
+
+
+def rhythm_preprocess():
+    sample_rate, data = read(db.fetch()[selected_index][2])
+    data = data[0:len(data):int(sample_rate / 2000)]
+    sample_rate = int(sample_rate / int(sample_rate / 2000))
+    data = data / max(data)
+    if filter_var.get() and upp_freq_value.get().isdigit() and low_freq_value.get().isdigit()\
+            and int(low_freq_value.get()) < int(upp_freq_value.get()):
+        fft_spectrum = np.fft.rfft(data)
+        freq = np.fft.rfftfreq(len(data), d=1. / sample_rate)
+        indices = freq < int(upp_freq_value.get())
+        print(indices)
+        fft_spectrum_clean = fft_spectrum * indices
+        indices = freq > int(low_freq_value.get())
+        fft_spectrum_clean = fft_spectrum_clean * indices
+        plt.plot(fft_spectrum_clean)
+        #plt.show()
+        data = np.fft.irfft(fft_spectrum_clean).real
+        data = data / max(data)
+    else:
+        low_freq_value.set(0)
+        upp_freq_value.set(int(sample_rate/2))
+    return sample_rate, data
 
 
 def populate_list():
@@ -34,6 +59,8 @@ def add_item(path):
 
 def select_item(event):
     try:
+        print(filter_var.get())
+        print('Hello')
         global selected_item
         global selected_index
         selected_index = rhythms_list.curselection()[0]
@@ -41,10 +68,12 @@ def select_item(event):
         rhythm_entry.delete(0, END)
         rhythm_entry.insert(END, selected_item)
 
-        sample_rate, data = read(db.fetch()[selected_index][2])
+        sample_rate, data = rhythm_preprocess()
         print(len(data))
         duration = len(data) / sample_rate
-        print(duration)
+        #data1 = -data**2*np.log(data**2)
+        #ind = detect_peaks(data, mph=0.5, mpd=0.3*sample_rate, show=False)
+        #heart_rate = 60 / (np.mean((ind[1:]-ind[:len(ind)-1])/sample_rate))
         time = np.arange(0, duration, 1 / sample_rate)
         figure1.clear()
         ax1 = figure1.add_subplot()
@@ -55,7 +84,7 @@ def select_item(event):
         ax1.set_ylabel('Амплитуда')
         ax1.set_title(selected_item)
         canvas.draw()
-        pulse_label.config(text='Пульс')
+        #pulse_label.config(text='ЧСС ~'+str(int(heart_rate))+' уд./мин')
 
     except IndexError:
         pass
@@ -91,8 +120,8 @@ def listen_rhythm(event):
 
 
 def fft_window(event):
-
-    sample_rate, data = read(db.fetch()[selected_index][2])
+    sample_rate, data = rhythm_preprocess()
+    duration = len(data) / sample_rate
     fft_spectrum = np.fft.rfft(data)
     freq = np.fft.rfftfreq(len(data), d=1./sample_rate)
     fft_spectrum_abs = np.abs(fft_spectrum)
@@ -158,14 +187,36 @@ toolbar.update()
 
 figure1.canvas.draw_idle()
 
+filter_var = IntVar()
+
+filter_button = Checkbutton(root, text='Применить фильтр', variable=filter_var, onvalue=1, offvalue=0)
+filter_button.place(x=630, y=190)
+
+low_freq_text = StringVar()
+low_freq_label = Label(root, text='Наименьшая частота', font=('bold', 14), pady=20)
+low_freq_label.place(x=630, y=210)
+
+upp_freq_text = StringVar()
+upp_freq_label = Label(root, text='Наибольшая частота', font=('bold', 14), pady=20)
+upp_freq_label.place(x=630, y=250)
+
 rhythm_text = StringVar()
+low_freq_value = StringVar()
+upp_freq_value = StringVar()
+
 instr_label = Label(root, text='Добавить ритм', font=('bold', 14), pady=20)
-instr_label.place(x=630, y=250)
+instr_label.place(x=630, y=330)
 
 rhythm_label = Label(root, text='Имя', font=('bold', 14), pady=20)
-rhythm_label.place(x=630, y=300)
+rhythm_label.place(x=630, y=370)
 rhythm_entry = Entry(root, textvariable=rhythm_text)
-rhythm_entry.place(x=700, y=320)
+rhythm_entry.place(x=700, y=390)
+
+low_freq_entry = Entry(root, textvariable=low_freq_value, width=7)
+low_freq_entry.place(x=800, y=230)
+
+upp_freq_entry = Entry(root, textvariable=upp_freq_value, width=7)
+upp_freq_entry.place(x=800, y=270)
 
 # Список ранее загруженных ритмов
 rhythms_list = Listbox(root, height=8, width=25, border=0)
@@ -187,10 +238,10 @@ rhythms_list.bind('<<ListboxSelect>>', select_item)
 # Кнопки
 add_btn = Button(root, text='Выбрать файл', width=12)
 add_btn.bind('<Button-1>', choose_file)
-add_btn.place(x=700, y=355)
+add_btn.place(x=700, y=425)
 
 add_btn = Button(root, text='Удалить из списка', width=16, command=remove_item)
-add_btn.place(x=700, y=400)
+add_btn.place(x=700, y=470)
 
 pulse_label = Label(root, text='Пульс', font=('bold', 14), pady=20)
 pulse_label.place(x=20, y=530)
