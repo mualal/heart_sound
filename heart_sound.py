@@ -12,6 +12,7 @@ from stingray import lightcurve
 from stingray.bispectrum import Bispectrum
 from detecta import detect_peaks
 from scipy.signal import butter, lfilter
+import itertools
 
 db = Database('heart_rhythms.db')
 
@@ -23,6 +24,14 @@ def heart_rate():
     data = data / max(data)
     data = butter_bandpass_filter(data, 60, 90, sample_rate, order=6)
     data = data / max(data)
+    data_split = int(sample_rate * 2)
+    data_split_lst = [data[x:x+data_split] for x in range(0, len(data), data_split)]
+    data_split_arr = np.array([np.array(xi) for xi in data_split_lst])
+    for i in range(0, len(data_split_arr)):
+        data_split_arr[i] = data_split_arr[i]/max(data_split_arr[i])
+    data = list(itertools.chain(*data_split_arr))
+    #plt.plot(data)
+    #plt.show()
     splited_size = int(sample_rate * 0.02)
     data_splited = [data[x:x+splited_size] for x in range(0, len(data), splited_size)]
     data_np_splited = np.array([np.array(xi) for xi in data_splited])
