@@ -16,6 +16,32 @@ from scipy.signal import butter, lfilter
 db = Database('heart_rhythms.db')
 
 
+def heart_rate():
+    sample_rate, data = read(db.fetch()[selected_index][2])
+    data = data[0:len(data):int(sample_rate / 2000)]
+    sample_rate = int(sample_rate / int(sample_rate / 2000))
+    data = data / max(data)
+    data = butter_bandpass_filter(data, 60, 90, sample_rate, order=6)
+    data = data / max(data)
+    splited_size = int(sample_rate * 0.02)
+    data_splited = [data[x:x+splited_size] for x in range(0, len(data), splited_size)]
+    data_np_splited = np.array([np.array(xi) for xi in data_splited])
+    for j in range(0, len(data_np_splited)):
+        for k in range(0, len(data_np_splited[j])):
+            if data_np_splited[j][k] == 0:
+                data_np_splited[j][k] = 0.0001
+    shannon_energy = np.array([-np.sum(i**2*np.log(i**2))/len(i) for i in data_np_splited])
+    shannon_energy_norm = (shannon_energy - np.mean(shannon_energy))/np.std(shannon_energy)
+    #shannon_energy_norm = shannon_energy / max(shannon_energy)
+    print(np.mean(shannon_energy))
+    ind = detect_peaks(shannon_energy_norm, mph=np.mean(shannon_energy), mpd=5, show=False)
+    heart_rate = 0.5 * 60 / (np.mean((ind[1:] - ind[:len(ind) - 1]) * 0.02))
+    pulse_label.config(text='ЧСС ~' + str(int(heart_rate)) + ' уд./мин')
+    #plt.plot(shannon_energy_norm)
+    #plt.show()
+
+
+
 def butter_bandpass(lowcut, highcut, fs, order=5):
     nyq = fs / 2
     low = lowcut / nyq
@@ -79,7 +105,6 @@ def select_item(event):
         duration = len(data) / sample_rate
         #data1 = -data**2*np.log(data**2)
         #ind = detect_peaks(data, mph=0.5, mpd=0.3*sample_rate, show=False)
-        #heart_rate = 60 / (np.mean((ind[1:]-ind[:len(ind)-1])/sample_rate))
         time = np.arange(0, duration, 1 / sample_rate)
         figure1.clear()
         ax1 = figure1.add_subplot()
@@ -90,7 +115,8 @@ def select_item(event):
         ax1.set_ylabel('Амплитуда')
         ax1.set_title(selected_item)
         canvas.draw()
-        #pulse_label.config(text='ЧСС ~'+str(int(heart_rate))+' уд./мин')
+        heart_rate()
+
 
     except IndexError:
         pass
