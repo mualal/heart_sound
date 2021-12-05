@@ -11,8 +11,23 @@ import pygame as pg
 from stingray import lightcurve
 from stingray.bispectrum import Bispectrum
 from detecta import detect_peaks
+from scipy.signal import butter, lfilter
 
 db = Database('heart_rhythms.db')
+
+
+def butter_bandpass(lowcut, highcut, fs, order=5):
+    nyq = fs / 2
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    return b, a
+
+
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+    y = lfilter(b, a, data)
+    return y
 
 
 def rhythm_preprocess():
@@ -22,20 +37,11 @@ def rhythm_preprocess():
     data = data / max(data)
     if filter_var.get() and upp_freq_value.get().isdigit() and low_freq_value.get().isdigit()\
             and int(low_freq_value.get()) < int(upp_freq_value.get()):
-        fft_spectrum = np.fft.rfft(data)
-        freq = np.fft.rfftfreq(len(data), d=1. / sample_rate)
-        indices = freq < int(upp_freq_value.get())
-        print(indices)
-        fft_spectrum_clean = fft_spectrum * indices
-        indices = freq > int(low_freq_value.get())
-        fft_spectrum_clean = fft_spectrum_clean * indices
-        plt.plot(fft_spectrum_clean)
-        #plt.show()
-        data = np.fft.irfft(fft_spectrum_clean).real
+        data = butter_bandpass_filter(data, int(low_freq_value.get()), int(upp_freq_value.get()), sample_rate, order=6)
         data = data / max(data)
     else:
-        low_freq_value.set(0)
-        upp_freq_value.set(int(sample_rate/2))
+        low_freq_value.set(0+1)
+        upp_freq_value.set(int(sample_rate/2)-1)
     return sample_rate, data
 
 
@@ -48,7 +54,7 @@ def populate_list():
 
 def add_item(path):
     if rhythm_text.get() == '':
-        messagebox.showerror('Required Fields', 'Please include all fields')
+        messagebox.showerror('Поле не заполнено', 'Введите имя')
         return
     db.insert(rhythm_text.get(), path)
     rhythms_list.delete(0, END)
@@ -140,10 +146,8 @@ def fft_window(event):
 
 
 def bsp_window(event):
-    sample_rate, data = read(db.fetch()[selected_index][2])
+    sample_rate, data = rhythm_preprocess()
     duration = len(data) / sample_rate
-    data = data[0:len(data):int(sample_rate / 2000)]
-    sample_rate = int(sample_rate / int(sample_rate / 2000))
     time = np.arange(0, duration, 1 / sample_rate)
     data = data / max(data)
     times = time[0:int(3 / duration * len(data))]
