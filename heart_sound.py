@@ -232,11 +232,11 @@ filter_button = Checkbutton(root, text='Применить фильтр', variab
 filter_button.place(x=630, y=190)
 
 low_freq_text = StringVar()
-low_freq_label = Label(root, text='Наименьшая частота', font=('bold', 14), pady=20)
+low_freq_label = Label(root, text='Наименьшая частота, Гц', font=('bold', 12), pady=20)
 low_freq_label.place(x=630, y=210)
 
 upp_freq_text = StringVar()
-upp_freq_label = Label(root, text='Наибольшая частота', font=('bold', 14), pady=20)
+upp_freq_label = Label(root, text='Наибольшая частота, Гц', font=('bold', 12), pady=20)
 upp_freq_label.place(x=630, y=250)
 
 rhythm_text = StringVar()
@@ -244,7 +244,7 @@ low_freq_value = StringVar()
 upp_freq_value = StringVar()
 
 instr_label = Label(root, text='Добавить ритм', font=('bold', 14), pady=20)
-instr_label.place(x=630, y=330)
+instr_label.place(x=630, y=325)
 
 rhythm_label = Label(root, text='Имя', font=('bold', 14), pady=20)
 rhythm_label.place(x=630, y=370)
@@ -252,13 +252,13 @@ rhythm_entry = Entry(root, textvariable=rhythm_text)
 rhythm_entry.place(x=700, y=390)
 
 low_freq_entry = Entry(root, textvariable=low_freq_value, width=7)
-low_freq_entry.place(x=800, y=230)
+low_freq_entry.place(x=825, y=230)
 
 upp_freq_entry = Entry(root, textvariable=upp_freq_value, width=7)
-upp_freq_entry.place(x=800, y=270)
+upp_freq_entry.place(x=825, y=270)
 
 # Список ранее загруженных ритмов
-rhythms_list = Listbox(root, height=8, width=25, border=0)
+rhythms_list = Listbox(root, height=8, width=30, border=0)
 rhythms_list.place(x=630, y=20)
 
 # Полоса прокрутки
@@ -285,7 +285,7 @@ add_btn.place(x=700, y=470)
 pulse_label = Label(root, text='Пульс', font=('bold', 14), pady=20)
 pulse_label.place(x=20, y=530)
 
-arythmy_label = Label(root, text='Аритмия', font=('bold', 14), pady=20)
+arythmy_label = Label(root, text='', font=('bold', 14), pady=20)
 arythmy_label.place(x=180, y=530)
 
 listen_btn = Button(root, text='Слушать', width=12)
