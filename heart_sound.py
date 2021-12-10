@@ -13,6 +13,7 @@ from stingray.bispectrum import Bispectrum
 from detecta import detect_peaks
 from scipy.signal import butter, lfilter
 import itertools
+import subprocess
 
 db = Database('heart_rhythms.db')
 
@@ -21,14 +22,14 @@ def heart_rate():
     sample_rate, data = read(db.fetch()[selected_index][2])
     data = data[0:len(data):int(sample_rate / 2000)]
     sample_rate = int(sample_rate / int(sample_rate / 2000))
-    data = data / max(data)
+    data = data / max(abs(data))
     data = butter_bandpass_filter(data, 60, 90, sample_rate, order=6)
-    data = data / max(data)
+    data = data / max(abs(data))
     data_split = int(sample_rate * 2)
     data_split_lst = [data[x:x+data_split] for x in range(0, len(data), data_split)]
     data_split_arr = np.array([np.array(xi) for xi in data_split_lst])
     for i in range(0, len(data_split_arr)):
-        data_split_arr[i] = data_split_arr[i]/max(data_split_arr[i])
+        data_split_arr[i] = data_split_arr[i]/max(abs(data_split_arr[i]))
     data = list(itertools.chain(*data_split_arr))
     #plt.plot(data)
     #plt.show()
@@ -47,6 +48,8 @@ def heart_rate():
     heart_rate = 0.5 * 60 / (np.mean((ind[1:] - ind[:len(ind) - 1]) * 0.02))
     pulse_label.config(text='ЧСС ~' + str(int(heart_rate)) + ' уд./мин')
     #plt.plot(shannon_energy_norm)
+    #plt.show()
+    #plt.specgram(data, NFFT=256, Fs=sample_rate)
     #plt.show()
 
 
@@ -69,11 +72,11 @@ def rhythm_preprocess():
     sample_rate, data = read(db.fetch()[selected_index][2])
     data = data[0:len(data):int(sample_rate / 2000)]
     sample_rate = int(sample_rate / int(sample_rate / 2000))
-    data = data / max(data)
+    data = data / max(abs(data))
     if filter_var.get() and upp_freq_value.get().isdigit() and low_freq_value.get().isdigit()\
             and int(low_freq_value.get()) < int(upp_freq_value.get()):
         data = butter_bandpass_filter(data, int(low_freq_value.get()), int(upp_freq_value.get()), sample_rate, order=6)
-        data = data / max(data)
+        data = data / max(abs(data))
     else:
         low_freq_value.set(0+1)
         upp_freq_value.set(int(sample_rate/2)-1)
@@ -141,6 +144,10 @@ def choose_file(event):
     file_name = fd.askopenfile(defaultextension='.wav', title='Выберите .wav файл')
     if '.wav' in file_name.name:
         add_item(file_name.name)
+    if '.m4a' in file_name.name:
+        new_file_name = file_name.name[:len(file_name.name)-4]+'.wav'
+        subprocess.call(['ffmpeg', '-i', file_name.name, new_file_name])
+        add_item(new_file_name)
 
 
 def clear_text():
