@@ -7,6 +7,7 @@ from db_struct import Database
 from matplotlib import pyplot as plt
 from matplotlib import ticker
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.widgets import Slider
 import pygame as pg
 from stingray import lightcurve
 from stingray.bispectrum import Bispectrum
@@ -60,7 +61,6 @@ def heart_rate():
     #plt.show()
     #plt.specgram(data, NFFT=256, Fs=sample_rate)
     #plt.show()
-
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
@@ -138,7 +138,6 @@ def select_item(event):
         canvas.draw()
         heart_rate()
 
-
     except IndexError:
         pass
 
@@ -178,12 +177,30 @@ def listen_rhythm(event):
 
 def rqa_window(event):
     sample_rate, data = rhythm_preprocess()
-    low_value = int(len(data) / 2 - 1.5 * sample_rate)
-    upp_value = int(len(data) / 2 + 1.5 * sample_rate)
+
+    fig, ax = plt.subplots(figsize=(7, 6))
+    low_value = int(len(data) / 2 - 0.75 * sample_rate)
+    upp_value = int(len(data) / 2 + 0.75 * sample_rate)
     rqa_matrix = recurrence_data(data[low_value:upp_value])
-    plt.imshow(rqa_matrix, extent=np.array([low_value, upp_value, low_value, upp_value])/sample_rate)
-    plt.xlabel('Время, с')
-    plt.ylabel('Время, с')
+    img = ax.imshow(rqa_matrix, extent=np.array([low_value, upp_value, low_value, upp_value]) / sample_rate)
+    ax.set_xlabel('Время, с')
+    ax.set_ylabel('Время, с')
+    ax.set_title('Количественный анализ повторяемости')
+    plt.subplots_adjust(left=0.25, bottom=0.25)
+    ax_scale = plt.axes([0.25, 0.1, 0.65, 0.03])
+    ax_cutoff = plt.axes([0.1, 0.25, 0.0225, 0.63])
+    scale_factor = Slider(ax_scale, 'Масштаб', 1, 100, valinit=30)
+    cutoff_factor = Slider(ax_cutoff, 'Отсечка', 1, 100, valinit=15, orientation='vertical')
+
+    def update(val):
+        current_scale = scale_factor.val
+        current_cutoff = cutoff_factor.val
+        rqa_matrix1 = recurrence_data(data[low_value:upp_value], scale=current_scale, cutoff=current_cutoff)
+        ax.imshow(rqa_matrix1, extent=np.array([low_value, upp_value, low_value, upp_value]) / sample_rate)
+        fig.canvas.draw_idle()
+
+    scale_factor.on_changed(update)
+    cutoff_factor.on_changed(update)
     plt.show()
 
 
