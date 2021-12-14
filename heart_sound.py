@@ -12,10 +12,19 @@ from stingray import lightcurve
 from stingray.bispectrum import Bispectrum
 from detecta import detect_peaks
 from scipy.signal import butter, lfilter
+from scipy.spatial.distance import pdist, squareform
 import itertools
 import subprocess
 
 db = Database('heart_rhythms.db')
+
+
+def recurrence_data(signal, scale=30, cutoff=15):
+    dist = pdist(signal[:, None])
+    dist = np.floor(dist * scale)
+    dist[dist > cutoff] = cutoff
+    m = squareform(dist)
+    return m
 
 
 def heart_rate():
@@ -167,6 +176,17 @@ def listen_rhythm(event):
         listen_btn.config(text='Не слушать')
 
 
+def rqa_window(event):
+    sample_rate, data = rhythm_preprocess()
+    low_value = int(len(data) / 2 - 1.5 * sample_rate)
+    upp_value = int(len(data) / 2 + 1.5 * sample_rate)
+    rqa_matrix = recurrence_data(data[low_value:upp_value])
+    plt.imshow(rqa_matrix, extent=np.array([low_value, upp_value, low_value, upp_value])/sample_rate)
+    plt.xlabel('Время, с')
+    plt.ylabel('Время, с')
+    plt.show()
+
+
 def fft_window(event):
     sample_rate, data = rhythm_preprocess()
     duration = len(data) / sample_rate
@@ -303,9 +323,13 @@ fft_btn = Button(root, text='Фурье', width=12)
 fft_btn.bind('<Button-1>', fft_window)
 fft_btn.place(x=520, y=550)
 
+recurrence_btn = Button(root, text='Повторяемость', width=12)
+recurrence_btn.bind('<Button-1>', rqa_window)
+recurrence_btn.place(x=640, y=550)
+
 bsp_btn = Button(root, text='Биспектр', width=12)
 bsp_btn.bind('<Button-1>', bsp_window)
-bsp_btn.place(x=660, y=550)
+bsp_btn.place(x=760, y=550)
 
 populate_list()
 
