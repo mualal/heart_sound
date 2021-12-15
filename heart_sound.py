@@ -129,12 +129,24 @@ def select_item(event):
         time = np.arange(0, duration, 1 / sample_rate)
         figure1.clear()
         ax1 = figure1.add_subplot()
-        ax1.plot(time[0:len(data)], data, linewidth=0.5)
+        figure1.subplots_adjust(bottom=0.25)
+        ax_trans = figure1.add_axes([0.125, 0.1, 0.775, 0.03])
+        ax1.set_xlim(1, 2)
+        trans_factor = Slider(ax_trans, 'Время\n начала', 0, duration - 1, valinit=1)
+        ax1.plot(time[0:len(data)], data[0:len(data)], linewidth=0.5, color='black')
         ax1.yaxis.set_major_formatter(formatter)
         ax1.grid(linewidth=0.3)
         ax1.set_xlabel('Время (с)')
         ax1.set_ylabel('Амплитуда')
         ax1.set_title(selected_item)
+
+        def update(val):
+            current_trans = trans_factor.val
+            ax1.set_xlim(current_trans, current_trans + 1)
+            figure1.canvas.draw_idle()
+
+        trans_factor.on_changed(update)
+
         canvas.draw()
         heart_rate()
 
@@ -250,14 +262,14 @@ def bsp_window(event):
 root = Tk()
 root.title('Звук Сердца')
 root.resizable(width=False, height=False)
-root.geometry('930x600')
+root.geometry('930x640')
 
 formatter = ticker.ScalarFormatter(useMathText=True)
 formatter.set_scientific(True)
 formatter.set_powerlimits((-1, 1))
 
 # Место для графика
-figure1 = plt.Figure(figsize=(6, 5), dpi=100)
+figure1 = plt.Figure(figsize=(6, 5.5), dpi=100)
 ax = figure1.add_subplot()
 canvas = FigureCanvasTkAgg(figure1, root)
 rhythm_graph = canvas.get_tk_widget()
@@ -327,26 +339,26 @@ add_btn = Button(root, text='Удалить из списка', width=16, comman
 add_btn.place(x=700, y=470)
 
 pulse_label = Label(root, text='Пульс', font=('bold', 14), pady=20)
-pulse_label.place(x=20, y=530)
+pulse_label.place(x=20, y=560)
 
 arythmy_label = Label(root, text='', font=('bold', 14), pady=20)
-arythmy_label.place(x=180, y=530)
+arythmy_label.place(x=180, y=560)
 
 listen_btn = Button(root, text='Слушать', width=12)
 listen_btn.bind('<Button-1>', listen_rhythm)
-listen_btn.place(x=400, y=550)
+listen_btn.place(x=400, y=560)
 
 fft_btn = Button(root, text='Фурье', width=12)
 fft_btn.bind('<Button-1>', fft_window)
-fft_btn.place(x=520, y=550)
+fft_btn.place(x=520, y=560)
 
 recurrence_btn = Button(root, text='Повторяемость', width=12)
 recurrence_btn.bind('<Button-1>', rqa_window)
-recurrence_btn.place(x=640, y=550)
+recurrence_btn.place(x=640, y=560)
 
 bsp_btn = Button(root, text='Биспектр', width=12)
 bsp_btn.bind('<Button-1>', bsp_window)
-bsp_btn.place(x=760, y=550)
+bsp_btn.place(x=760, y=560)
 
 populate_list()
 
