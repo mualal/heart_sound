@@ -16,8 +16,16 @@ from scipy.signal import butter, lfilter
 from scipy.spatial.distance import pdist, squareform
 import itertools
 import subprocess
+import threading
 
 db = Database('heart_rhythms.db')
+
+
+def listen_thread():
+    while pg.mixer.music.get_busy():
+        continue
+    else:
+        listen_btn.config(text='Слушать')
 
 
 def recurrence_data(signal, scale=30, cutoff=15):
@@ -185,6 +193,8 @@ def listen_rhythm(event):
         pg.mixer.music.load(db.fetch()[selected_index][2])
         pg.mixer.music.play()
         listen_btn.config(text='Не слушать')
+        t = threading.Thread(target=listen_thread)
+        t.start()
 
 
 def rqa_window(event):
