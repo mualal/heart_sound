@@ -2,7 +2,7 @@ Heart Sound: приложение для визуализации, воспро�
 
 ![Графический интерфейс](https://github.com/mualal/heart_sound/blob/master/img/Screenshot%202021-12-06%20at%2000.49.06.png)
 
-[![Watch the video](https://github.com/mualal/heart_sound/blob/master/img/Screenshot%202021-12-06%20at%2000.49.06.png)](https://drive.google.com/file/d/1h2__eOvKVSoz7zLk8Msxq5OSpfQfmrxi/view)
+[![Watch the video](https://github.com/mualal/heart_sound/blob/master/img/Screenshot%202021-12-06%20at%2000.49.06.png)](https://www.youtube.com/watch?v=MUUdEyRFFeM)
 
 При первом открытии exe файла необходимо ввести имя в соответствующее поле и выбрать запись с ФКГ (например, rhythm3.wav из файлов проекта). При повторных запусках приложения ранее просмотренные файлы будут подгружаться автоматически.
 
