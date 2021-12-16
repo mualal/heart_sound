@@ -135,22 +135,21 @@ def select_item(event):
         #data1 = -data**2*np.log(data**2)
         #ind = detect_peaks(data, mph=0.5, mpd=0.3*sample_rate, show=False)
         time = np.arange(0, duration, 1 / sample_rate)
-        figure1.clear()
-        ax1 = figure1.add_subplot()
-        figure1.subplots_adjust(bottom=0.25)
-        ax_trans = figure1.add_axes([0.125, 0.1, 0.775, 0.03])
-        ax1.set_xlim(1, 2)
-        trans_factor = Slider(ax_trans, 'Время\n начала', 0, duration - 1, valinit=1)
-        ax1.plot(time[0:len(data)], data[0:len(data)], linewidth=0.5, color='black')
-        ax1.yaxis.set_major_formatter(formatter)
-        ax1.grid(linewidth=0.3)
-        ax1.set_xlabel('Время (с)')
-        ax1.set_ylabel('Амплитуда')
-        ax1.set_title(selected_item)
+        #figure1.clear()
+        #ax1 = figure1.add_subplot()
+        ax.clear()
+        ax.plot(time[0:len(data)], data[0:len(data)], linewidth=0.5, color='black')
+        ax.yaxis.set_major_formatter(formatter)
+        trans_factor.valmax = duration - 1
+        trans_factor.ax.set_xlim(trans_factor.valmin, trans_factor.valmax)
+        ax.grid(linewidth=0.3)
+        ax.set_xlabel('Время (с)')
+        ax.set_ylabel('Амплитуда')
+        ax.set_title(selected_item)
 
         def update(val):
             current_trans = trans_factor.val
-            ax1.set_xlim(current_trans, current_trans + 1)
+            ax.set_xlim(current_trans, current_trans + 1)
             figure1.canvas.draw_idle()
 
         trans_factor.on_changed(update)
@@ -280,16 +279,18 @@ formatter.set_powerlimits((-1, 1))
 
 # Место для графика
 figure1 = plt.Figure(figsize=(6, 5.5), dpi=100)
-ax = figure1.add_subplot()
 canvas = FigureCanvasTkAgg(figure1, root)
 rhythm_graph = canvas.get_tk_widget()
 rhythm_graph.place(x=5, y=0)
 canvas.draw()
-
 toolbar = NavigationToolbar2Tk(canvas, root)
 toolbar.place(x=5, y=0)
 toolbar.update()
-
+ax = figure1.subplots()
+figure1.subplots_adjust(bottom=0.25)
+ax_trans = figure1.add_axes([0.159, 0.1, 0.711, 0.03])
+ax.set_xlim(1, 2)
+trans_factor = Slider(ax_trans, 'Время\n начала', 0, 30, valinit=1)
 figure1.canvas.draw_idle()
 
 filter_var = IntVar()
