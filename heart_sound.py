@@ -86,10 +86,13 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
 
 
 def rhythm_preprocess():
-    sample_rate, data = read(db.fetch()[selected_index][2])
+    path_to_file = db.fetch()[selected_index][2]
+    sample_rate, data = read(path_to_file)
+    path_label.config(text=path_to_file)
     data = data[0:len(data):int(sample_rate / 2000)]
     sample_rate = int(sample_rate / int(sample_rate / 2000))
     data = data / max(abs(data))
+
     if filter_var.get() and upp_freq_value.get().isdigit() and low_freq_value.get().isdigit()\
             and int(low_freq_value.get()) < int(upp_freq_value.get()):
         data = butter_bandpass_filter(data, int(low_freq_value.get()), int(upp_freq_value.get()), sample_rate, order=6)
@@ -142,7 +145,9 @@ def select_item(event):
         ax.yaxis.set_major_formatter(formatter)
         trans_factor.valmax = duration - 1
         trans_factor.ax.set_xlim(trans_factor.valmin, trans_factor.valmax)
-        ax.grid(linewidth=0.3)
+        ax.grid(which='major', linewidth=0.3)
+        ax.grid(which='minor', linewidth=0.1)
+        ax.minorticks_on()
         ax.set_xlabel('Время (с)')
         ax.set_ylabel('Амплитуда')
         ax.set_title(selected_item)
@@ -199,14 +204,19 @@ def listen_rhythm(event):
 def rqa_window(event):
     sample_rate, data = rhythm_preprocess()
 
-    fig, ax = plt.subplots(figsize=(7, 6))
-    low_value = int(len(data) / 2 - 0.75 * sample_rate)
-    upp_value = int(len(data) / 2 + 0.75 * sample_rate)
+    if ax.get_xlim()[1] - ax.get_xlim()[0] < 2:
+        low_value = int(ax.get_xlim()[0]*sample_rate)
+        upp_value = int(ax.get_xlim()[1]*sample_rate)
+    else:
+        low_value = int(len(data) / 2 - 0.75 * sample_rate)
+        upp_value = int(len(data) / 2 + 0.75 * sample_rate)
+
+    fig, ax3 = plt.subplots(figsize=(7, 6))
     rqa_matrix = recurrence_data(data[low_value:upp_value])
-    img = ax.imshow(rqa_matrix, extent=np.array([low_value, upp_value, low_value, upp_value]) / sample_rate)
-    ax.set_xlabel('Время, с')
-    ax.set_ylabel('Время, с')
-    ax.set_title('Количественный анализ повторяемости')
+    img = ax3.imshow(rqa_matrix, extent=np.array([low_value, upp_value, low_value, upp_value]) / sample_rate)
+    ax3.set_xlabel('Время, с')
+    ax3.set_ylabel('Время, с')
+    ax3.set_title('Количественный анализ повторяемости')
     plt.subplots_adjust(left=0.25, bottom=0.25)
     ax_scale = plt.axes([0.25, 0.1, 0.65, 0.03])
     ax_cutoff = plt.axes([0.1, 0.25, 0.0225, 0.63])
@@ -217,7 +227,7 @@ def rqa_window(event):
         current_scale = scale_factor.val
         current_cutoff = cutoff_factor.val
         rqa_matrix1 = recurrence_data(data[low_value:upp_value], scale=current_scale, cutoff=current_cutoff)
-        ax.imshow(rqa_matrix1, extent=np.array([low_value, upp_value, low_value, upp_value]) / sample_rate)
+        ax3.imshow(rqa_matrix1, extent=np.array([low_value, upp_value, low_value, upp_value]) / sample_rate)
         fig.canvas.draw_idle()
 
     scale_factor.on_changed(update)
@@ -226,13 +236,21 @@ def rqa_window(event):
 
 
 def fft_window(event):
+    """
+    Быстрое преобразование Фурье для выбранного интервала фонокардиограммы
+    :param event:
+    :return: возвращает True, если выполнилась успешно
+    """
     sample_rate, data = rhythm_preprocess()
-    duration = len(data) / sample_rate
+    # duration = len(data) / sample_rate
+    low_value = int(ax.get_xlim()[0] * sample_rate)
+    upp_value = int(ax.get_xlim()[1] * sample_rate)
+    data = data[low_value:upp_value]
     fft_spectrum = np.fft.rfft(data)
     freq = np.fft.rfftfreq(len(data), d=1./sample_rate)
     fft_spectrum_abs = np.abs(fft_spectrum)
 
-    plt.plot(freq, fft_spectrum_abs, linewidth=0.5)
+    plt.plot(freq, fft_spectrum_abs, linewidth=0.5, color='black')
     ax3 = plt.gca()
     ax3.yaxis.set_major_formatter(formatter)
     plt.grid(linewidth=0.3)
@@ -240,20 +258,29 @@ def fft_window(event):
     plt.ylabel('Мощность')
     plt.title(selected_item + ' (преобразование Фурье)')
     plt.show()
-    #toolbar2 = NavigationToolbar2Tk(canvas2, new_window)
-    #toolbar2.place(x=5, y=0)
-    #toolbar2.update()
+
+    return True
 
 
 def bsp_window(event):
+    """
+    Биспектр-изображение выбранного интервала фонокардиограммы
+    :param event:
+    :return: возвращает True, если выполнилась успешно
+    """
     sample_rate, data = rhythm_preprocess()
     duration = len(data) / sample_rate
     time = np.arange(0, duration, 1 / sample_rate)
-    data = data / max(data)
-    times = time[0:int(3 / duration * len(data))]
-    counts = data[0:int(3 / duration * len(data))]
-    times = times[0:len(times):2]
-    counts = counts[0:len(counts):2]
+
+    if ax.get_xlim()[1] - ax.get_xlim()[0] < 3:
+        low_value = int(ax.get_xlim()[0]*sample_rate)
+        upp_value = int(ax.get_xlim()[1]*sample_rate)
+    else:
+        low_value = int(len(data) / 2 - 1.5 * sample_rate)
+        upp_value = int(len(data) / 2 + 1.5 * sample_rate)
+
+    times = time[low_value:upp_value:2]
+    counts = data[low_value:upp_value:2]
     lc = lightcurve.Lightcurve(times, counts)
 
     bs = Bispectrum(lc, scale='unbiased')
@@ -266,6 +293,8 @@ def bsp_window(event):
     ax3.set_ylim([-300, 300])
     ax3.set_xlim([-300, 300])
     p.show()
+
+    return True
 
 
 root = Tk()
@@ -351,6 +380,9 @@ add_btn.place(x=700, y=470)
 
 pulse_label = Label(root, text='Пульс', font=('bold', 14), pady=20)
 pulse_label.place(x=20, y=560)
+
+path_label = Label(root, text='Путь к файлу', font=('bold', 12), pady=20)
+path_label.place(x=20, y=600)
 
 arythmy_label = Label(root, text='', font=('bold', 14), pady=20)
 arythmy_label.place(x=180, y=560)
