@@ -17,6 +17,7 @@ from scipy.spatial.distance import pdist, squareform
 import itertools
 import subprocess
 import threading
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 db = Database('heart_rhythms.db')
 
@@ -33,15 +34,12 @@ def recurrence_data(signal, scale=30, cutoff=15):
     dist = np.floor(dist * scale)
     dist[dist > cutoff] = cutoff
     m = squareform(dist)
-    return m
+    return np.rot90(m)
 
 
 def heart_rate():
-    sample_rate, data = read(db.fetch()[selected_index][2])
-    data = data[0:len(data):int(sample_rate / 2000)]
-    sample_rate = int(sample_rate / int(sample_rate / 2000))
-    data = data / max(abs(data))
-    data = butter_bandpass_filter(data, 60, 90, sample_rate, order=6)
+    sample_rate, data = rhythm_preprocess()
+    data = butter_bandpass_filter(data, 30, 60, sample_rate, order=6)
     data = data / max(abs(data))
     data_split = int(sample_rate * 2)
     data_split_lst = [data[x:x+data_split] for x in range(0, len(data), data_split)]
@@ -88,6 +86,9 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
 def rhythm_preprocess():
     path_to_file = db.fetch()[selected_index][2]
     sample_rate, data = read(path_to_file)
+    # проверка моно или стерео сигнал; если стерео, то оставляю информацию только по одному каналу
+    if isinstance(data[1], np.ndarray):
+        data = data[:, 0]
     path_label.config(text=path_to_file)
     data = data[0:len(data):int(sample_rate / 2000)]
     sample_rate = int(sample_rate / int(sample_rate / 2000))
@@ -214,9 +215,12 @@ def rqa_window(event):
     fig, ax3 = plt.subplots(figsize=(7, 6))
     rqa_matrix = recurrence_data(data[low_value:upp_value])
     img = ax3.imshow(rqa_matrix, extent=np.array([low_value, upp_value, low_value, upp_value]) / sample_rate)
+    divider = make_axes_locatable(ax3)
+    cax = divider.append_axes("right",size="5%", pad=0.05)
+    fig.colorbar(img, cax=cax)
     ax3.set_xlabel('Время, с')
     ax3.set_ylabel('Время, с')
-    ax3.set_title('Количественный анализ повторяемости')
+    ax3.set_title('Анализ повторяемости')
     plt.subplots_adjust(left=0.25, bottom=0.25)
     ax_scale = plt.axes([0.25, 0.1, 0.65, 0.03])
     ax_cutoff = plt.axes([0.1, 0.25, 0.0225, 0.63])
@@ -250,13 +254,13 @@ def fft_window(event):
     freq = np.fft.rfftfreq(len(data), d=1./sample_rate)
     fft_spectrum_abs = np.abs(fft_spectrum)
 
-    plt.plot(freq, fft_spectrum_abs, linewidth=0.5, color='black')
+    plt.plot(freq[freq < 400], fft_spectrum_abs[freq < 400], linewidth=0.5, color='black')
     ax3 = plt.gca()
     ax3.yaxis.set_major_formatter(formatter)
     plt.grid(linewidth=0.3)
     plt.xlabel('Частота (Гц)')
     plt.ylabel('Мощность')
-    plt.title(selected_item + ' (преобразование Фурье)')
+    plt.title(selected_item + ' (быстрое преобразование Фурье)')
     plt.show()
 
     return True
@@ -379,7 +383,7 @@ add_btn = Button(root, text='Удалить из списка', width=16, comman
 add_btn.place(x=700, y=470)
 
 pulse_label = Label(root, text='Пульс', font=('bold', 14), pady=20)
-pulse_label.place(x=20, y=560)
+pulse_label.place(x=20, y=555)
 
 path_label = Label(root, text='Путь к файлу', font=('bold', 12), pady=20)
 path_label.place(x=20, y=600)
