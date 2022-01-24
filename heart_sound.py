@@ -1,6 +1,5 @@
 from tkinter import *
-from tkinter import messagebox
-from tkinter import filedialog as fd, Tk, Label, Button, Scrollbar, Listbox, Entry
+from tkinter import filedialog as fd
 import numpy as np
 from scipy.io.wavfile import read
 from db_struct import Database
@@ -18,6 +17,7 @@ import itertools
 import subprocess
 import threading
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import os
 
 db = Database('heart_rhythms.db')
 
@@ -47,8 +47,8 @@ def heart_rate():
     for i in range(0, len(data_split_arr)):
         data_split_arr[i] = data_split_arr[i]/max(abs(data_split_arr[i]))
     data = list(itertools.chain(*data_split_arr))
-    #plt.plot(data)
-    #plt.show()
+    # plt.plot(data)
+    # plt.show()
     splited_size = int(sample_rate * 0.02)
     data_splited = [data[x:x+splited_size] for x in range(0, len(data), splited_size)]
     data_np_splited = np.array([np.array(xi) for xi in data_splited])
@@ -58,15 +58,15 @@ def heart_rate():
                 data_np_splited[j][k] = 0.0001
     shannon_energy = np.array([-np.sum(i**2*np.log(i**2))/len(i) for i in data_np_splited])
     shannon_energy_norm = (shannon_energy - np.mean(shannon_energy))/np.std(shannon_energy)
-    #shannon_energy_norm = shannon_energy / max(shannon_energy)
-    print(np.mean(shannon_energy))
+    # shannon_energy_norm = shannon_energy / max(shannon_energy)
+    # print(np.mean(shannon_energy))
     ind = detect_peaks(shannon_energy_norm, mph=np.mean(shannon_energy), mpd=5, show=False)
     heart_rate = 0.5 * 60 / (np.mean((ind[1:] - ind[:len(ind) - 1]) * 0.02))
     pulse_label.config(text='ЧСС ~' + str(int(heart_rate)) + ' уд./мин')
-    #plt.plot(shannon_energy_norm)
-    #plt.show()
-    #plt.specgram(data, NFFT=256, Fs=sample_rate)
-    #plt.show()
+    # plt.plot(shannon_energy_norm)
+    # plt.show()
+    # plt.specgram(data, NFFT=256, Fs=sample_rate)
+    # plt.show()
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
@@ -107,25 +107,27 @@ def rhythm_preprocess():
 def populate_list():
     rhythms_list.delete(0, END)
     for row in db.fetch():
-        print(row)
+        # print(row)
         rhythms_list.insert(END, row[1])
 
 
 def add_item(path):
     if rhythm_text.get() == '':
-        messagebox.showerror('Поле не заполнено', 'Введите имя')
-        return
-    db.insert(rhythm_text.get(), path)
-    rhythms_list.delete(0, END)
-    rhythms_list.insert(END, (rhythm_text.get()))
+        db.insert(os.path.basename(path), path)
+        rhythms_list.delete(0, END)
+        rhythms_list.insert(END, os.path.basename(path))
+    else:
+        db.insert(rhythm_text.get(), path)
+        rhythms_list.delete(0, END)
+        rhythms_list.insert(END, rhythm_text.get())
     clear_text()
     populate_list()
+    rhythms_list.see(END)
 
 
 def select_item(event):
     try:
-        print(filter_var.get())
-        print('Hello')
+        # print(filter_var.get())
         global selected_item
         global selected_index
         selected_index = rhythms_list.curselection()[0]
@@ -134,13 +136,13 @@ def select_item(event):
         rhythm_entry.insert(END, selected_item)
 
         sample_rate, data = rhythm_preprocess()
-        print(len(data))
+        # print(len(data))
         duration = len(data) / sample_rate
-        #data1 = -data**2*np.log(data**2)
-        #ind = detect_peaks(data, mph=0.5, mpd=0.3*sample_rate, show=False)
+        # data1 = -data**2*np.log(data**2)
+        # ind = detect_peaks(data, mph=0.5, mpd=0.3*sample_rate, show=False)
         time = np.arange(0, duration, 1 / sample_rate)
-        #figure1.clear()
-        #ax1 = figure1.add_subplot()
+        # figure1.clear()
+        # ax1 = figure1.add_subplot()
         ax.clear()
         ax.plot(time[0:len(data)], data[0:len(data)], linewidth=0.5, color='black')
         ax.yaxis.set_major_formatter(formatter)
@@ -171,16 +173,19 @@ def remove_item():
     db.remove(db.fetch()[selected_index][0])
     clear_text()
     populate_list()
+    if selected_index != 0:
+        rhythms_list.see(selected_index - 1)
 
 
 def choose_file(event):
-    file_name = fd.askopenfile(defaultextension='.wav', title='Выберите .wav файл')
-    if '.wav' in file_name.name:
-        add_item(file_name.name)
-    if '.m4a' in file_name.name:
-        new_file_name = file_name.name[:len(file_name.name)-4]+'.wav'
-        subprocess.call(['ffmpeg', '-i', file_name.name, new_file_name])
-        add_item(new_file_name)
+    file_names = fd.askopenfiles(defaultextension='.wav', title='Выберите .wav файлы')
+    for file_name in file_names:
+        if '.wav' in file_name.name:
+            add_item(file_name.name)
+        if '.m4a' in file_name.name:
+            new_file_name = file_name.name[:len(file_name.name) - 4] + '.wav'
+            subprocess.call(['ffmpeg', '-i', file_name.name, new_file_name])
+            add_item(new_file_name)
 
 
 def clear_text():
@@ -194,7 +199,7 @@ def listen_rhythm(event):
         pg.mixer.music.stop()
         listen_btn.config(text='Слушать')
     else:
-        print(selected_index)
+        # print(selected_index)
         pg.mixer.music.load(db.fetch()[selected_index][2])
         pg.mixer.music.play()
         listen_btn.config(text='Не слушать')
@@ -216,11 +221,11 @@ def rqa_window(event):
     rqa_matrix = recurrence_data(data[low_value:upp_value])
     img = ax3.imshow(rqa_matrix, extent=np.array([low_value, upp_value, low_value, upp_value]) / sample_rate)
     divider = make_axes_locatable(ax3)
-    cax = divider.append_axes("right",size="5%", pad=0.05)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
     fig.colorbar(img, cax=cax)
     ax3.set_xlabel('Время, с')
     ax3.set_ylabel('Время, с')
-    ax3.set_title('Анализ повторяемости')
+    ax3.set_title(selected_item + ' (анализ повторяемости)')
     plt.subplots_adjust(left=0.25, bottom=0.25)
     ax_scale = plt.axes([0.25, 0.1, 0.65, 0.03])
     ax_cutoff = plt.axes([0.1, 0.25, 0.0225, 0.63])
@@ -290,7 +295,7 @@ def bsp_window(event):
     bs = Bispectrum(lc, scale='unbiased')
 
     p = bs.plot_mag()
-    p.title('Величина биспектра')
+    p.title(selected_item + ' (величина биспектра)')
     p.xlabel('Частота f1, Гц')
     p.ylabel('Частота f2, Гц')
     ax3 = p.gca()
