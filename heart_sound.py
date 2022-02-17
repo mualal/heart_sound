@@ -146,7 +146,7 @@ def select_item(event):
         ax.clear()
         ax.plot(time[0:len(data)], data[0:len(data)], linewidth=0.5, color='black')
         ax.yaxis.set_major_formatter(formatter)
-        trans_factor.valmax = duration - 1
+        trans_factor.valmax = duration - 1.5
         trans_factor.ax.set_xlim(trans_factor.valmin, trans_factor.valmax)
         ax.grid(which='major', linewidth=0.3)
         ax.grid(which='minor', linewidth=0.1)
@@ -157,7 +157,7 @@ def select_item(event):
 
         def update(val):
             current_trans = trans_factor.val
-            ax.set_xlim(current_trans, current_trans + 1)
+            ax.set_xlim(current_trans, current_trans + 1.5)
             figure1.canvas.draw_idle()
 
         trans_factor.on_changed(update)
@@ -252,8 +252,8 @@ def fft_window(event):
     """
     sample_rate, data = rhythm_preprocess()
     # duration = len(data) / sample_rate
-    low_value = int(ax.get_xlim()[0] * sample_rate)
-    upp_value = int(ax.get_xlim()[1] * sample_rate)
+    low_value = int(max(0, ax.get_xlim()[0]) * sample_rate)
+    upp_value = int(min(len(data)/sample_rate, ax.get_xlim()[1]) * sample_rate)
     data = data[low_value:upp_value]
     fft_spectrum = np.fft.rfft(data)
     freq = np.fft.rfftfreq(len(data), d=1./sample_rate)
@@ -302,6 +302,31 @@ def bsp_window(event):
     ax3.set_ylim([-300, 300])
     ax3.set_xlim([-300, 300])
     p.show()
+
+    return True
+
+
+def spec_window(event):
+    """
+    Спектрограмма выбранного интервала фонокардиограммы
+    :param event:
+    :return: возвращает True, если выполнилась успешно
+    """
+    sample_rate, data = rhythm_preprocess()
+    low_value = int(max(0, ax.get_xlim()[0]) * sample_rate)
+    upp_value = int(min(len(data)/sample_rate, ax.get_xlim()[1]) * sample_rate)
+    print(ax.get_xlim()[0])
+    print(ax.get_xlim()[1])
+    print(data)
+    data = data[low_value:upp_value]
+    print(data)
+    plt.title(selected_item + ' (спектрограмма)')
+    plt.xlabel('Время, с')
+    plt.ylabel('Частота, Гц')
+    plt.specgram(data, NFFT=256, Fs=sample_rate)
+    cbar = plt.colorbar()
+    cbar.set_label('         dBFS', rotation=0, verticalalignment='baseline')
+    plt.show()
 
     return True
 
@@ -411,6 +436,10 @@ recurrence_btn.place(x=640, y=560)
 bsp_btn = Button(root, text='Биспектр', width=12)
 bsp_btn.bind('<Button-1>', bsp_window)
 bsp_btn.place(x=760, y=560)
+
+spec_btn = Button(root, text='Спектрограмма', width=12)
+spec_btn.bind('<Button-1>', spec_window)
+spec_btn.place(x=760, y=590)
 
 populate_list()
 
